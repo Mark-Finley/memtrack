@@ -15,14 +15,13 @@ $username = $_SESSION['username'];
 $sql = "SELECT memos.id, memos.subject, memos.message, users.username AS sender 
         FROM memos 
         JOIN users ON memos.sender_id = users.id 
-        WHERE memos.recipient_id = ?
+        WHERE memos.recipient_id = ? 
         ORDER BY memos.created_at DESC";
 
 $stmt = $conn->prepare($sql);
 $stmt->bind_param("i", $user_id);
 $stmt->execute();
 $result = $stmt->get_result();
-
 ?>
 
 <!DOCTYPE html>
@@ -71,12 +70,27 @@ $result = $stmt->get_result();
 <body>
 
     <div class="container">
-        <h1>Welcome, <?php echo htmlspecialchars($username); ?>!</h1>
-        <p>Manage your memos easily from this dashboard.</p>
+        <!-- <p>Manage your memos easily from this dashboard.</p> -->
+        
+
+        <?php if ($_SESSION['role'] == 'admin'): ?>
+            <h1>Admin Panel</h1>
+            <h2>Welcome, <?php echo htmlspecialchars($username); ?>!</h2>
+            <p>As an admin, you can archive memos, delete any memo, and manage users.</p>
+        <?php else: ?>
+            <h1>User Dashboard</h1>
+            <h2>Welcome, <?php echo htmlspecialchars($username); ?>!</h2>
+            <p>You can send, read, and manage your own memos.</p>
+        <?php endif; ?>
+        
 
         <div class="buttons">
-            <a href="send_memo.php">📨 Send Memo</a>
+            <a href="send_memo.php">📨 Receive Memo</a>
             <a href="view_memos.php">📂 View Memos</a>
+            <a href="activity_list.php">📝 Activity List</a>
+            <?php if($_SESSION['role'] == 'admin'): ?>
+                <a href="admin_panel.php">⚙ Manage Users</a>
+            <?php endif; ?>
             <a href="logout.php" style="background: red;">🚪 Logout</a>
         </div>
 
