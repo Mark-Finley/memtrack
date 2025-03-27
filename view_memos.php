@@ -3,7 +3,7 @@ include 'config.php';
 session_start();
 
 $user_id = $_SESSION['user_id'];
-$sql = "SELECT * FROM memos WHERE recipient_id = ?";
+$sql = "SELECT * FROM memos WHERE sender_id = ?";
 $stmt = $conn->prepare($sql);
 $stmt->bind_param("i", $user_id);
 $stmt->execute();

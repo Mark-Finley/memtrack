@@ -4,18 +4,43 @@ session_start();
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $sender_id = $_SESSION['user_id'];
-    $recipient_id = $_POST['recipient_id'];
-    $subject = $_POST['subject'];
-    $message = $_POST['message'];
+    $recipient_name = trim($_POST['recipient']); // Store recipient name instead of ID
+    $subject = trim($_POST['subject']);
 
-    $sql = "INSERT INTO memos (sender_id, recipient_id, subject, message) VALUES (?, ?, ?, ?)";
-    $stmt = $conn->prepare($sql);
-    $stmt->bind_param("iiss", $sender_id, $recipient_id, $subject, $message);
-    
-    if ($stmt->execute()) {
-        echo "<div class='message success'>Memo sent successfully.</div>";
+    // Validate input
+    if (empty($recipient_name) || empty($subject)) {
+        echo "<div class='message error'>Error: All fields are required.</div>";
+        exit();
+    }
+
+    // File Upload Handling
+    $upload_dir = "uploads/";
+    $allowed_types = ['jpg', 'jpeg', 'png', 'pdf'];
+    $file_name = $_FILES['memo_file']['name'];
+    $file_tmp = $_FILES['memo_file']['tmp_name'];
+    $file_size = $_FILES['memo_file']['size'];
+    $file_ext = strtolower(pathinfo($file_name, PATHINFO_EXTENSION));
+    $file_path = $upload_dir . uniqid() . "_" . basename($file_name);
+
+    if (!in_array($file_ext, $allowed_types)) {
+        echo "<div class='message error'>Error: Only JPG, PNG, and PDF files are allowed.</div>";
+        exit();
+    } elseif ($file_size > 5 * 1024 * 1024) { // 5MB max
+        echo "<div class='message error'>Error: File size must be below 5MB.</div>";
+        exit();
+    } elseif (move_uploaded_file($file_tmp, $file_path)) {
+        // Insert memo with recipient name instead of ID
+        $sql = "INSERT INTO memos (sender_id, recipient_name, subject, file_path) VALUES (?, ?, ?, ?)";
+        $stmt = $conn->prepare($sql);
+        $stmt->bind_param("isss", $sender_id, $recipient_name, $subject, $file_path);
+
+        if ($stmt->execute()) {
+            echo "<div class='message success'>Memo uploaded and sent successfully.</div>";
+        } else {
+            echo "<div class='message error'>Error: " . $conn->error . "</div>";
+        }
     } else {
-        echo "<div class='message error'>Error: " . $conn->error . "</div>";
+        echo "<div class='message error'>Error: Failed to upload the file.</div>";
     }
 }
 ?>
@@ -56,7 +81,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             display: flex;
             flex-direction: column;
         }
-        input, textarea {
+        input, button {
             margin-bottom: 15px;
             padding: 10px;
             border-radius: 5px;
@@ -64,16 +89,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             font-size: 16px;
             width: 100%;
         }
-        input[type="number"] {
-            width: 48%;
-            display: inline-block;
-        }
         button {
-            padding: 10px 20px;
-            border-radius: 5px;
             background-color: #007bff;
             color: white;
-            font-size: 16px;
             cursor: pointer;
             border: none;
         }
@@ -94,35 +112,24 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             background-color: #dc3545;
             color: white;
         }
-        .back-button {
-            display: block;
-            margin-top: 20px;
-            text-align: center;
-            font-size: 16px;
-            color: #007bff;
-            text-decoration: none;
-        }
-        .back-button:hover {
-            text-decoration: underline;
-        }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h1>Receive Memo</h1>
+    <h1>Send Memo</h1>
     
-    <form method="post">
-        <label for="recipient_id">Recipient ID:</label>
-        <input type="number" name="recipient_id" id="recipient_id" required>
-        
+    <form method="post" enctype="multipart/form-data">
+        <label for="recipient">Recipient Name:</label>
+        <input type="text" name="recipient" id="recipient" required>
+
         <label for="subject">Subject:</label>
         <input type="text" name="subject" id="subject" required>
         
-        <label for="message">Message:</label>
-        <textarea name="message" id="message" rows="5" required></textarea>
+        <label for="memo_file">Upload Memo (JPG, PNG, PDF):</label>
+        <input type="file" name="memo_file" id="memo_file" required>
         
-        <button type="submit">Submit</button>
+        <button type="submit">Upload & Send Memo</button>
     </form>
 
     <!-- Back to Dashboard Link -->
