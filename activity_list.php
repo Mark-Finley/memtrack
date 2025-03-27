@@ -9,6 +9,7 @@
 <?php
 session_start();
 include 'config.php';
+include 'layout.php';
 
 // Check if user is logged in
 if (!isset($_SESSION['user_id'])) {
@@ -18,21 +19,45 @@ if (!isset($_SESSION['user_id'])) {
 
 // Fetch all memos with sender & recipient info
 $status_filter = isset($_GET['status']) ? $_GET['status'] : '';
+$start_date = isset($_GET['start_date']) ? $_GET['start_date'] : '';
+$end_date = isset($_GET['end_date']) ? $_GET['end_date'] : '';
 
-$sql = "SELECT memos.id, memos.subject, memos.message, memos.status, memos.created_at, 
-        memos.sender_id, sender.username AS sender_name, recipient.username AS recipient_name
+// Build SQL query with dynamic filters
+$sql = "SELECT memos.id, memos.subject, memos.file_path, memos.status, memos.created_at, 
+        memos.sender_id, sender.username AS sender_name, memos.recipient_name
         FROM memos 
         JOIN users AS sender ON memos.sender_id = sender.id
-        JOIN users AS recipient ON memos.recipient_id = recipient.id";
+        WHERE 1=1";  // Base condition to simplify adding dynamic filters
 
+// Filter by status
 if ($status_filter) {
-    $sql .= " WHERE memos.status = ?";
+    $sql .= " AND memos.status = ?";
+}
+
+// Filter by date range
+if ($start_date && $end_date) {
+    $sql .= " AND DATE(memos.created_at) BETWEEN ? AND ?";
+} elseif ($start_date) {
+    $sql .= " AND DATE(memos.created_at) >= ?";
+} elseif ($end_date) {
+    $sql .= " AND DATE(memos.created_at) <= ?";
 }
 
 $stmt = $conn->prepare($sql);
 
-if ($status_filter) {
-    $stmt->bind_param("s", $status_filter);
+// Bind parameters dynamically based on filters
+if ($status_filter && $start_date && $end_date) {
+    $stmt->bind_param("ssss", $status_filter, $start_date, $end_date);
+} elseif ($status_filter && $start_date) {
+    $stmt->bind_param("sss", $status_filter, $start_date);
+} elseif ($status_filter && $end_date) {
+    $stmt->bind_param("sss", $status_filter, $end_date);
+} elseif ($start_date && $end_date) {
+    $stmt->bind_param("ss", $start_date, $end_date);
+} elseif ($start_date) {
+    $stmt->bind_param("s", $start_date);
+} elseif ($end_date) {
+    $stmt->bind_param("s", $end_date);
 }
 
 $stmt->execute();
@@ -47,6 +72,7 @@ $result = $stmt->get_result();
     <title>Activity List</title>
     <link rel="stylesheet" href="styles.css"> <!-- Include CSS -->
     <style>
+        /* Add your existing styles here */
         body {
             font-family: Arial, sans-serif;
             margin: 20px;
@@ -78,7 +104,7 @@ $result = $stmt->get_result();
         .filter {
             margin-bottom: 20px;
         }
-        .filter select, .filter button {
+        .filter select, .filter button, .filter input[type="date"] {
             padding: 8px 12px;
             margin-right: 10px;
             border: 1px solid #ccc;
@@ -88,7 +114,7 @@ $result = $stmt->get_result();
             background-color: #fff;
             transition: background-color 0.3s ease;
         }
-        .filter select:focus, .filter button:focus {
+        .filter select:focus, .filter button:focus, .filter input[type="date"]:focus {
             outline: none;
             border-color: #007bff;
         }
@@ -146,7 +172,7 @@ $result = $stmt->get_result();
     <div class="container">
         <h1>📊 Memo Activity List</h1>
 
-        <!-- Filter by Status -->
+        <!-- Filter by Status and Date -->
         <div class="filter">
             <form method="GET">
                 <label for="status">Filter by Status:</label>
@@ -156,6 +182,13 @@ $result = $stmt->get_result();
                     <option value="read" <?= ($status_filter == 'read') ? 'selected' : ''; ?>>Read</option>
                     <option value="archived" <?= ($status_filter == 'archived') ? 'selected' : ''; ?>>Archived</option>
                 </select>
+
+                <label for="start_date">Start Date:</label>
+                <input type="date" name="start_date" id="start_date" value="<?= htmlspecialchars($start_date); ?>">
+
+                <label for="end_date">End Date:</label>
+                <input type="date" name="end_date" id="end_date" value="<?= htmlspecialchars($end_date); ?>">
+
                 <button type="submit">Filter</button>
             </form>
         </div>
@@ -166,7 +199,7 @@ $result = $stmt->get_result();
                 <th>Sender</th>
                 <th>Recipient</th>
                 <th>Subject</th>
-                <th>Message</th>
+                <th>View Memo</th>
                 <th>Status</th>
                 <th>Date</th>
                 <th>Action</th>
@@ -177,7 +210,13 @@ $result = $stmt->get_result();
                         <td><?= htmlspecialchars($row['sender_name']); ?></td>
                         <td><?= htmlspecialchars($row['recipient_name']); ?></td>
                         <td><?= htmlspecialchars($row['subject']); ?></td>
-                        <td><?= nl2br(htmlspecialchars($row['message'])); ?></td>
+                        <td>
+                            <?php if (!empty($row['file_path'])):?>
+                                <a href="<?= htmlspecialchars($row['file_path']);?>" target="_blank" >📄</a>
+                            <?php else: ?>
+                                No file
+                            <?php endif; ?>
+                        </td>
                         <td>
                             <span class="status <?= $row['status']; ?>">
                                 <?= ucfirst($row['status']); ?>

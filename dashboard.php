@@ -3,26 +3,27 @@ session_start();
 include 'config.php';
 
 // Check if user is logged in
-if (!isset($_SESSION['user_id'])) {
+if (!isset($_SESSION['user_id']) || !isset($_SESSION['username'])) {
     header("Location: login.php");
     exit();
 }
 
-$user_id = $_SESSION['user_id'];
-$username = $_SESSION['username'];
+$username = $_SESSION['username']; // Fetch the logged-in user's name
 
-// Fetch received memos
-$sql = "SELECT memos.id, memos.subject, memos.message, users.username AS sender 
+// Fetch received memos using recipient_name instead of recipient_id
+$sql = "SELECT memos.id, memos.subject, memos.file_path, users.username AS sender 
         FROM memos 
         JOIN users ON memos.sender_id = users.id 
-        WHERE memos.recipient_id = ? 
+        WHERE memos.recipient_name = ? 
         ORDER BY memos.created_at DESC";
 
 $stmt = $conn->prepare($sql);
-$stmt->bind_param("i", $user_id);
+$stmt->bind_param("s", $username); // Bind username instead of user_id
 $stmt->execute();
 $result = $stmt->get_result();
 ?>
+
+<?php include 'layout.php'; ?>
 
 <!DOCTYPE html>
 <html lang="en">
@@ -30,6 +31,7 @@ $result = $stmt->get_result();
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard</title>
+    <link rel="icon" type="image/png" href="favicon.png">
     <link rel="stylesheet" href="styles.css"> <!-- Include CSS -->
     <style>
         body {
@@ -70,11 +72,8 @@ $result = $stmt->get_result();
 <body>
 
     <div class="container">
-        <!-- <p>Manage your memos easily from this dashboard.</p> -->
-        
-
         <?php if ($_SESSION['role'] == 'admin'): ?>
-            <h1>Admin Panel</h1>
+            <h1>Admin Dashboard</h1>
             <h2>Welcome, <?php echo htmlspecialchars($username); ?>!</h2>
             <p>As an admin, you can archive memos, delete any memo, and manage users.</p>
         <?php else: ?>
@@ -83,15 +82,14 @@ $result = $stmt->get_result();
             <p>You can send, read, and manage your own memos.</p>
         <?php endif; ?>
         
-
         <div class="buttons">
-            <a href="send_memo.php">📨 Receive Memo</a>
+            <a href="send_memo.php">📨 Send Memo</a>
             <a href="view_memos.php">📂 View Memos</a>
             <a href="activity_list.php">📝 Activity List</a>
             <?php if($_SESSION['role'] == 'admin'): ?>
                 <a href="admin_panel.php">⚙ Manage Users</a>
+                <a href="work_stat.php">📊 Work Stats</a>
             <?php endif; ?>
-            <a href="logout.php" style="background: red;">🚪 Logout</a>
         </div>
 
         <h2>📋 Your Received Memos</h2>
@@ -101,7 +99,9 @@ $result = $stmt->get_result();
                     <div class="memo">
                         <strong>From: <?php echo htmlspecialchars($row['sender']); ?></strong>
                         <p><b>Subject:</b> <?php echo htmlspecialchars($row['subject']); ?></p>
-                        <p><?php echo nl2br(htmlspecialchars($row['message'])); ?></p>
+                        <?php if (!empty($row['file_path'])): ?>
+                            <p><a href="<?php echo htmlspecialchars($row['file_path']); ?>" target="_blank">📂 View Memo</a></p>
+                        <?php endif; ?>
                     </div>
                 <?php endwhile; ?>
             <?php else: ?>
@@ -112,3 +112,5 @@ $result = $stmt->get_result();
 
 </body>
 </html>
+
+<?php include 'includes/footer.php'; ?>
