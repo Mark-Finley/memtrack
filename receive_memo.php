@@ -3,15 +3,12 @@ include 'config.php';
 session_start();
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
-    $sent_by = trim($_POST['sent_by']);
-    $recieved_by = trim($_POST['received_by']);
+    $sender_id = $_SESSION['user_id'];
+    $recipient_name = trim($_POST['recipient']); // Store recipient name instead of ID
     $subject = trim($_POST['subject']);
-    $directorate_from = trim($_POST['directorate_from']);
-    $directorate_to = trim($_POST['directorate_to']);
-    $date = trim($_POST['date']);
 
     // Validate input
-    if (empty($recieved_by) || empty($subject) || empty($directorate_from) || empty($directorate_to) || empty($date)) {
+    if (empty($recipient_name) || empty($subject)) {
         echo "<div class='message error'>Error: All fields are required.</div>";
         exit();
     }
@@ -33,9 +30,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         exit();
     } elseif (move_uploaded_file($file_tmp, $file_path)) {
         // Insert memo with recipient name instead of ID
-        $sql = "INSERT INTO memos (sent_by, received_by, subject, directorate_from, directorate_to, date, file_path) VALUES (?, ?, ?, ?, ?, ?, ?)";
+        $sql = "INSERT INTO memos (sender_id, recipient_name, subject, file_path) VALUES (?, ?, ?, ?)";
         $stmt = $conn->prepare($sql);
-        $stmt->bind_param("sssssss", $sent_by, $recieved_by, $subject, $directorate_from, $directorate_to, $date, $file_path);
+        $stmt->bind_param("isss", $sender_id, $recipient_name, $subject, $file_path);
 
         if ($stmt->execute()) {
             echo "<div class='message success'>Memo uploaded and sent successfully.</div>";
@@ -53,7 +50,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Send Memo</title>
+    <title>Receive Memo</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -120,14 +117,11 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 <body>
 
 <div class="container">
-    <h1>Send Memo</h1>
+    <h1>Receive Memo</h1>
     
-    <form method="post" enctype="multipart/form-data">
-        <label for="sent_by">Sent By :</label>
-        <input type="text" name="sent_by" id="sent_by" required>
-        
-        <label for="received_by">Received By:</label>
-        <input type="text" name="received_by" id="received_by" required>
+    <form method="post" enctype="multipart/form-data">  
+        <label for="recipient">Received By:</label>
+        <input type="text" name="recipient" id="recipient" required>
 
         <label for="subject">Subject:</label>
         <input type="text" name="subject" id="subject" required>
@@ -135,14 +129,11 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         <label for="date">Date:</label>
         <input type="date" name="date" id="date" required>
 
-        <label for="directorate_from">From:</label>
-        <input type="text" name="directorate_from" id="directorate_from" required>
+        <label for="department_from">From:</label>
+        <input type="text" name="department_from" id="department_from" required>
 
-        <label for="directorate_to">To:</label>
-        <input type="text" name="directorate_to" id="directorate_to" required>
-        
-        
-
+        <label for="department_to">To:</label>
+        <input type="text" name="department_to" id="department_to" required>
         
         <label for="memo_file">Upload Memo (JPG, PNG, PDF):</label>
         <input type="file" name="memo_file" id="memo_file" required>

@@ -24,9 +24,8 @@ $end_date = isset($_GET['end_date']) ? $_GET['end_date'] : '';
 
 // Build SQL query with dynamic filters
 $sql = "SELECT memos.id, memos.subject, memos.file_path, memos.status, memos.created_at, 
-        memos.sender_id, sender.username AS sender_name, memos.recipient_name
+        memos.sent_by, memos.received_by, memos.directorate_from, memos.directorate_to, memos.date
         FROM memos 
-        JOIN users AS sender ON memos.sender_id = sender.id
         WHERE 1=1";  // Base condition to simplify adding dynamic filters
 
 // Filter by status
@@ -70,6 +69,7 @@ $result = $stmt->get_result();
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Activity List</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
     <link rel="stylesheet" href="styles.css"> <!-- Include CSS -->
     <style>
         /* Add your existing styles here */
@@ -196,20 +196,26 @@ $result = $stmt->get_result();
         <!-- Memo List Table -->
         <table>
             <tr>
-                <th>Sender</th>
-                <th>Recipient</th>
+                <th>Sent By</th>
+                <th>Received By</th>
                 <th>Subject</th>
+                <th>Date</th>
+                <th>From</th>
+                <th>To</th>
                 <th>View Memo</th>
                 <th>Status</th>
-                <th>Date</th>
                 <th>Action</th>
             </tr>
             <?php if ($result->num_rows > 0): ?>
                 <?php while ($row = $result->fetch_assoc()): ?>
                     <tr>
-                        <td><?= htmlspecialchars($row['sender_name']); ?></td>
-                        <td><?= htmlspecialchars($row['recipient_name']); ?></td>
+                        <td><?= htmlspecialchars($row['sent_by']); ?></td>
+                        <td><?= htmlspecialchars($row['received_by']); ?></td>
                         <td><?= htmlspecialchars($row['subject']); ?></td>
+                        <td><?= date("F j, Y", strtotime($row['date'])); ?></td>
+                        <td><?= htmlspecialchars($row['directorate_from']); ?></td>
+                        <td><?= htmlspecialchars($row['directorate_to']); ?></td>
+
                         <td>
                             <?php if (!empty($row['file_path'])):?>
                                 <a href="<?= htmlspecialchars($row['file_path']);?>" target="_blank" >📄</a>
@@ -222,11 +228,11 @@ $result = $stmt->get_result();
                                 <?= ucfirst($row['status']); ?>
                             </span>
                         </td>
-                        <td><?= date("F j, Y, g:i a", strtotime($row['created_at'])); ?></td>
+                        
                         <td>
                             <!-- Action Buttons -->
                             <div class="action-btns">
-                                <!-- Change Status Form -->
+                                <!-- Change Status Form #comment later
                                 <form method="POST" action="update_status.php">
                                     <input type="hidden" name="memo_id" value="<?= $row['id']; ?>">
                                     <select name="status">
@@ -237,13 +243,13 @@ $result = $stmt->get_result();
                                         <?php endif; ?>
                                     </select>
                                     <button type="submit">Update</button>
-                                </form>
+                                </form> -->
 
                                 <!-- Delete Memo (Only for Sender) -->
                                 <?php if ($_SESSION['role'] =='admin' || $_SESSION['user_id'] == $row['sender_id']): ?>
                                     <form method="POST" action="del_memo.php" onsubmit="return confirm('Are you sure you want to delete this memo?');">
                                         <input type="hidden" name="memo_id" value="<?= $row['id']; ?>">
-                                        <button type="submit" class="delete-btn">🗑 Delete</button>
+                                        <button type="submit" class="delete-btn">Delete</button>
                                     </form>
                                 <?php endif; ?>
                             </div>
@@ -256,7 +262,7 @@ $result = $stmt->get_result();
         </table>
 
         <br>
-        <a href="dashboard.php">⬅ Back to Dashboard</a>
+        <a href="dashboard.php" class="btn btn-secondary mb3">⬅ Back to Dashboard</a>
     </div>
 
 </body>

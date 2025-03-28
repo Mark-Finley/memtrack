@@ -11,11 +11,10 @@ if (!isset($_SESSION['user_id']) || !isset($_SESSION['username'])) {
 $username = $_SESSION['username']; // Fetch the logged-in user's name
 
 // Fetch received memos using recipient_name instead of recipient_id
-$sql = "SELECT memos.id, memos.subject, memos.file_path, users.username AS sender 
-        FROM memos 
-        JOIN users ON memos.sender_id = users.id 
-        WHERE memos.recipient_name = ? 
-        ORDER BY memos.created_at DESC";
+$sql = "SELECT memos.id, memos.subject, memos.file_path 
+        FROM memos
+        WHERE memos.received_by = ? 
+        ORDER BY memos.date DESC";
 
 $stmt = $conn->prepare($sql);
 $stmt->bind_param("s", $username); // Bind username instead of user_id
@@ -83,6 +82,7 @@ $result = $stmt->get_result();
         <?php endif; ?>
         
         <div class="buttons">
+            <a href="receive_memo.php">📨 Receive Memo</a>
             <a href="send_memo.php">📨 Send Memo</a>
             <a href="view_memos.php">📂 View Memos</a>
             <a href="activity_list.php">📝 Activity List</a>
